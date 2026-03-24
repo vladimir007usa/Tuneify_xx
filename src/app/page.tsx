@@ -33,8 +33,8 @@ export const mockArtists = [
 ];
 
 const homeSections = [
-  { title: 'Trending songs', term: 'Top Bollywood Hits 2026' },
-  { title: 'More like Arijit Singh', term: 'Arijit Singh Hits' },
+  { title: 'Trending songs', term: 'Bollywood top hits' },
+  { title: 'More like Arijit Singh', term: 'Arijit Singh' },
   { title: 'More like Taylor Swift', term: 'Taylor Swift' },
   { title: 'Sad songs', term: 'Slow Reverb Hindi Sad' },
   { title: 'Workout', term: 'Gym Motivation Hindi' },
