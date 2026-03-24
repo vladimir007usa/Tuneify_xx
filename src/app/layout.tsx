@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tuneify - Web Player",
-  description: "Spotify clone built with Next.js",
+  title: "Tuneify - Web Player | Music for everyone",
+  description: "Listen to your favourite music, discover new tracks, and enjoy curated playlists — all for free on Tuneify.",
   manifest: '/site.webmanifest',
 };
 
