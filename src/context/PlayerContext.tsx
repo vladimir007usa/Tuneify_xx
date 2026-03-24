@@ -141,24 +141,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [playNext]);
 
   const loadSong = async (song: Song) => {
-    setCurrentSong(song);
-    setIsPlaying(true);
     setProgressState(0);
     setDurationState(0);
 
     let playableSong = song;
 
-    // If song has previewUrl, use it immediately as primary audio source
-    // This works reliably on all environments (Vercel, localhost, etc.)
+    // Prioritize previewUrl as audio source — reliable everywhere including Vercel
     if (!playableSong.youtubeId && !playableSong.audioUrl) {
       if (song.previewUrl) {
-        // Use iTunes 30s preview immediately — reliable on all environments
         playableSong = { ...song, audioUrl: song.previewUrl };
       } else {
-        // Try YouTube as a last resort with a short timeout
+        // Try YouTube as last resort with timeout
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
           const res = await fetch(`/api/yt-search?q=${encodeURIComponent(`${song.title} ${song.artist} official audio`)}`, { signal: controller.signal });
           clearTimeout(timeoutId);
           const data = await res.json();
@@ -167,19 +163,30 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           console.warn('yt-search failed or timed out:', e);
         }
       }
-      setCurrentSong(playableSong);
     }
 
-    if (playableSong.audioUrl) {
-      if (audioRef.current) {
-        audioRef.current.src = playableSong.audioUrl;
-        audioRef.current.play().catch(e => console.error("Audio playback error:", e));
-        if (youtubePlayerRef.current?.pauseVideo) youtubePlayerRef.current.pauseVideo();
-      }
-    } else if (playableSong.youtubeId) {
-      if (audioRef.current) audioRef.current.pause();
-    }
+    setCurrentSong(playableSong);
+    setIsPlaying(true);
   };
+
+  // Reactive audio engine — fires whenever currentSong changes
+  useEffect(() => {
+    if (!currentSong) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (currentSong.audioUrl) {
+      if (audio.src !== currentSong.audioUrl) {
+        audio.src = currentSong.audioUrl;
+        audio.load();
+      }
+      audio.play().catch(e => console.error('Audio play error:', e));
+      if (youtubePlayerRef.current?.pauseVideo) youtubePlayerRef.current.pauseVideo();
+    } else if (currentSong.youtubeId) {
+      audio.pause();
+      audio.src = '';
+    }
+  }, [currentSong?.audioUrl, currentSong?.youtubeId]);
 
   const playSong = useCallback((song: Song, newQueue: Song[] = [], index: number = 0) => {
     if (newQueue.length > 0) {
