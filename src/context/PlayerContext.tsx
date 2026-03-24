@@ -146,22 +146,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     let playableSong = song;
 
-    // Prioritize previewUrl as audio source — reliable everywhere including Vercel
+    // If song already has youtubeId or audioUrl, use it directly
     if (!playableSong.youtubeId && !playableSong.audioUrl) {
-      if (song.previewUrl) {
-        playableSong = { ...song, audioUrl: song.previewUrl };
-      } else {
-        // Try YouTube as last resort with timeout
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          const res = await fetch(`/api/yt-search?q=${encodeURIComponent(`${song.title} ${song.artist} official audio`)}`, { signal: controller.signal });
-          clearTimeout(timeoutId);
-          const data = await res.json();
-          if (data.videoId) playableSong = { ...song, youtubeId: data.videoId };
-        } catch (e) {
-          console.warn('yt-search failed or timed out:', e);
+      // ALWAYS try YouTube Data API first for full-length playback
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(`/api/yt-search?q=${encodeURIComponent(`${song.title} ${song.artist} official audio`)}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        const data = await res.json();
+        if (data.videoId) {
+          playableSong = { ...song, youtubeId: data.videoId };
         }
+      } catch (e) {
+        console.warn('YouTube API lookup failed:', e);
+      }
+
+      // Fall back to iTunes 30s preview ONLY if YouTube failed
+      if (!playableSong.youtubeId && song.previewUrl) {
+        playableSong = { ...song, audioUrl: song.previewUrl };
       }
     }
 
