@@ -140,36 +140,28 @@ const MusicSection = memo(function MusicSection({ title, term, entity = 'song', 
   isPlaying: boolean 
 }) {
   const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const hasLoaded = useRef(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !hasLoaded.current) {
-        hasLoaded.current = true;
-        loadData();
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const { fetchITunesData } = await import('@/lib/itunes');
+        const results = await fetchITunesData(term, entity as any);
+        if (!cancelled) setItems(results || []);
+      } catch (e) {
+        console.error(`Failed to load ${title}:`, e);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }, { rootMargin: '400px' });
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
-  }, [term]);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const { fetchITunesData } = await import('@/lib/itunes');
-      const results = await fetchITunesData(term, entity as any);
-      setItems(results || []);
-    } catch (e) {
-      console.error(`Failed to load ${title}:`, e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    loadData();
+    return () => { cancelled = true; };
+  }, [term, entity, title]);
 
   return (
-    <div ref={sectionRef}>
+    <div>
       <Section title={title}>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
           {loading ? (
@@ -178,8 +170,12 @@ const MusicSection = memo(function MusicSection({ title, term, entity = 'song', 
             items.map((s, index) => (
               <SongCard 
                 key={s.id} 
-                song={{ ...s, youtubeId: s.youtubeId }} 
-                onPlay={() => onPlay(s, items, index)} 
+                song={s} 
+                onPlay={() => onPlay(
+                  { id: s.id, title: s.title, artist: s.artist, thumbnail: s.thumbnail, previewUrl: s.previewUrl },
+                  items.map(item => ({ id: item.id, title: item.title, artist: item.artist, thumbnail: item.thumbnail, previewUrl: item.previewUrl })),
+                  index
+                )} 
                 active={currentSong?.id === s.id && isPlaying} 
               />
             ))
